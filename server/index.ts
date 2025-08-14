@@ -7,7 +7,7 @@ import type { Server } from "http";
 let server: Server | null = null;
 let storage: IStorage | null = null;
 
-export async function startServer(dbName?: string): Promise<{ app: Express.Application; server: Server; port: number, storage: IStorage }> {
+export async function startServer(dbName?: string): Promise<{ app: express.Application; server: Server; port: number, storage: IStorage }> {
   storage = new DrizzleStorage(dbName);
   const app = express();
   app.use(express.json());

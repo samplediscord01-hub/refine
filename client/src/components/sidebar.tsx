@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Folder, Edit2, Trash2, Settings } from "lucide-react";
@@ -10,7 +11,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getCategories, createCategory as createCategoryApi, deleteCategory as deleteCategoryApi, createTag as createTagApi, deleteTag as deleteTagApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Tag, Category } from "@shared/schema";
-import Link from "next/link"; // Assuming Link is from next/link for routing
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,19 +24,6 @@ interface SidebarProps {
   selectedSizeRange?: "small" | "medium" | "large";
   onSizeRangeChange: (range: "small" | "medium" | "large" | undefined) => void;
 }
-
-// Placeholder for SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton components
-// In a real application, these would be imported from your UI library.
-const SidebarContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-const SidebarMenu = ({ children }: { children: React.ReactNode }) => <ul>{children}</ul>;
-const SidebarMenuItem = ({ children }: { children: React.ReactNode }) => <li className="mb-2">{children}</li>;
-const SidebarMenuButton = ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) => {
-  if (asChild) {
-    return <>{children}</>;
-  }
-  return <button>{children}</button>;
-};
-
 
 const getTagColor = (color: string | null) => {
   const colors = {
