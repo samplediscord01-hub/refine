@@ -10,6 +10,7 @@ import { refreshMetadata, deleteMediaItem as deleteMediaItemApi } from "@/lib/ap
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItemWithTagsAndCategories, ApiOption } from "@shared/schema";
 import { TagCategoryManager } from "./tag-category-manager";
+import { MediaManagement } from "./media-management";
 
 interface DetailModalProps {
   mediaId: string;
@@ -46,7 +47,7 @@ const formatDuration = (seconds: number | null) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  
+
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
@@ -194,7 +195,7 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
             </Button>
           </div>
         </DialogHeader>
-        
+
         <div className="flex h-[calc(90vh-120px)]">
           {/* Left Panel - Media Preview */}
           <div className="flex-1 p-6 overflow-y-auto">
@@ -245,7 +246,7 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
                 </>
               )}
             </div>
-            
+
             {/* API Selection */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
@@ -296,11 +297,11 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
               </Button>
             </div>
           </div>
-          
+
           {/* Right Panel - Metadata */}
           <div className="w-80 bg-slate-800 p-6 overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Details</h3>
-            
+
             {/* Basic Info */}
             <div className="space-y-4 mb-6">
               <div>
@@ -326,13 +327,22 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
                 <p className="text-sm">{mediaItem.createdAt ? new Date(mediaItem.createdAt).toLocaleString() : "Unknown"}</p>
               </div>
             </div>
-            
+
             <TagCategoryManager
               mediaId={mediaItem.id}
-              assignedTags={mediaItem.tags}
-              assignedCategories={mediaItem.categories}
+              assignedTags={mediaItem.tags || []}
+              assignedCategories={mediaItem.categories || []}
             />
-            
+
+            {/* Media Management */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-4">Media Management</h3>
+              <MediaManagement
+                mediaItem={mediaItem}
+                apiOptions={apiOptions}
+              />
+            </div>
+
             {/* Folder Contents (if folder) */}
             {isFolder && (
               <div className="mb-6">
@@ -347,7 +357,7 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
                 </div>
               </div>
             )}
-            
+
             {/* Description */}
             {mediaItem.description && (
               <div className="mb-6">
@@ -355,7 +365,7 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
                 <p className="text-sm mt-2 text-slate-300">{mediaItem.description}</p>
               </div>
             )}
-            
+
             {/* Actions */}
             <div className="space-y-3">
               <Button

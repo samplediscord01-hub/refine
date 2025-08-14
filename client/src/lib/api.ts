@@ -68,4 +68,14 @@ export const removeCategoryFromMediaItem = (mediaItemId: string, categoryId: str
 
 // API Options
 export const getApiOptions = () => apiRequest<ApiOption[]>('GET', '/api/api-options');
+export const createApiOption = (option: Omit<ApiOption, 'id'>) => apiRequest<ApiOption>('POST', '/api/api-options', option);
 export const updateApiOption = (id: string, updates: Partial<ApiOption>) => apiRequest<ApiOption>('PUT', `/api/api-options/${id}`, updates);
+export const deleteApiOption = (id: string) => apiRequest<{ success: boolean }>('DELETE', `/api/api-options/${id}`);
+
+// Media Items - Missing functions
+export const updateMediaItem = (id: string, updates: Partial<any>) => apiRequest<any>('PUT', `/api/media/${id}`, updates);
+export const deleteMediaItem = (id: string) => apiRequest<{ success: boolean }>('DELETE', `/api/media/${id}`);
+export const getDownloadUrl = (id: string, apiId?: string) => {
+  const query = apiId ? `?apiId=${apiId}` : '';
+  return apiRequest<{ source: string; downloadUrl: string; expiresAt: string; proxy?: string }>('GET', `/api/media/${id}/download${query}`);
+};

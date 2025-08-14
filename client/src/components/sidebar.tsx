@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Plus, Video, Folder, Edit2, Trash2 } from "lucide-react";
+import { X, Plus, Folder, Edit2, Trash2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getCategories, createCategory as createCategoryApi, deleteCategory as deleteCategoryApi, createTag as createTagApi, deleteTag as deleteTagApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Tag, Category } from "@shared/schema";
+import Link from "next/link"; // Assuming Link is from next/link for routing
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,6 +24,19 @@ interface SidebarProps {
   selectedSizeRange?: "small" | "medium" | "large";
   onSizeRangeChange: (range: "small" | "medium" | "large" | undefined) => void;
 }
+
+// Placeholder for SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton components
+// In a real application, these would be imported from your UI library.
+const SidebarContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
+const SidebarMenu = ({ children }: { children: React.ReactNode }) => <ul>{children}</ul>;
+const SidebarMenuItem = ({ children }: { children: React.ReactNode }) => <li className="mb-2">{children}</li>;
+const SidebarMenuButton = ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) => {
+  if (asChild) {
+    return <>{children}</>;
+  }
+  return <button>{children}</button>;
+};
+
 
 const getTagColor = (color: string | null) => {
   const colors = {
@@ -45,6 +59,8 @@ export function Sidebar({
   onClose,
   selectedTags,
   onTagToggle,
+  selectedCategories,
+  onCategoryToggle,
   selectedType,
   onTypeChange,
   selectedSizeRange,
@@ -181,7 +197,7 @@ export function Sidebar({
               <X className="h-4 w-4" />
             </Button>
           </div>
-          
+
           {/* Categories Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
@@ -248,7 +264,7 @@ export function Sidebar({
               ))}
             </div>
           </div>
-          
+
           {/* Tags Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
@@ -263,7 +279,7 @@ export function Sidebar({
                 Add
               </Button>
             </div>
-            
+
             {/* Add new tag */}
             {isAddingTag && (
               <div className="mb-3 space-y-2">
@@ -296,7 +312,7 @@ export function Sidebar({
                 </div>
               </div>
             )}
-            
+
             <div className="flex flex-wrap gap-2 mb-3">
               {tags.map((tag) => (
                 <div key={tag.id} className="group relative">
@@ -326,7 +342,7 @@ export function Sidebar({
               ))}
             </div>
           </div>
-          
+
           {/* File Size Filter */}
           <div className="mb-8">
             <h3 className="text-sm font-medium text-slate-300 mb-3">File Size</h3>
