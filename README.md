@@ -40,36 +40,48 @@ A powerful Electron-based application for scraping, managing, and organizing med
 - `node-fetch` - HTTP requests
 - `concurrently` - Run multiple commands
 
-## 🚀 Installation & Setup
+## 🚀 Getting Started: Local Setup
+
+Follow these steps to get CipherBox running on your local machine.
 
 ### 1. Clone the Repository
+First, clone the repository to your local machine:
 ```bash
 git clone <your-repo-url>
 cd cipherbox
 ```
 
 ### 2. Install Dependencies
+Next, install all the required npm packages. This command will install both runtime and development dependencies.
 ```bash
 npm install
 ```
 
 ### 3. Database Setup
-The SQLite database will be automatically created on first run. No additional setup required.
+This application uses **SQLite** for local storage. The database file, `cipherbox.db`, will be automatically created in the root directory the first time you run the application. No manual setup is required.
 
-### 4. Development Mode
+### 4. Run in Development Mode
+To start the application in development mode, run the following command:
 ```bash
 npm run dev
 ```
-This will start:
-- Express server on port 5000
-- Electron app window
-- Hot reload for both frontend and backend
+This single command uses `concurrently` to launch everything you need:
+- The **backend server** (Express) which will be available at `http://localhost:5000`.
+- The **Electron application** which will open in a new window.
+- **Hot-reloading** is enabled for both the frontend and backend, so any changes you make to the code will be reflected automatically.
 
-### 5. Production Build
+### 5. Build for Production
+To create a production-ready build of the application, use the following command:
 ```bash
 npm run build
+```
+This will compile the frontend and backend code and place it in the `dist` folder.
+
+After the build is complete, you can start the production app with:
+```bash
 npm start
 ```
+This will launch the Electron application using the production build.
 
 ## 🎯 Available Scripts
 

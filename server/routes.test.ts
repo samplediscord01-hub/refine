@@ -10,6 +10,7 @@ describe('API Routes', () => {
   let port: number;
 
   beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
     process.env.PORT = '0';
     const serverInfo = await startServer(':memory:');
     app = serverInfo.app;
@@ -19,7 +20,6 @@ describe('API Routes', () => {
 
   afterAll(async () => {
     await stopServer();
-    process.exit(0); // Use this only if vitest hangs
   });
 
   it('should respond to /health with OK', async () => {

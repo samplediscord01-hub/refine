@@ -22,6 +22,7 @@ let storage: IStorage | null = null;
 
 export async function startServer(dbName?: string): Promise<{ app: express.Application; server: Server; port: number, storage: IStorage }> {
   storage = new DrizzleStorage(dbName);
+  await storage.initializeDatabase();
   const app = express();
   app.use(enableCORS);
   app.use(express.json());
@@ -71,7 +72,7 @@ export async function startServer(dbName?: string): Promise<{ app: express.Appli
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
-  } else {
+  } else if (process.env.NODE_ENV !== 'test') {
     serveStatic(app);
   }
 

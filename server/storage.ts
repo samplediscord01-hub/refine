@@ -325,7 +325,7 @@ export class DrizzleStorage implements IStorage {
           tag_id TEXT,
           PRIMARY KEY (media_item_id, tag_id),
           FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
-          FOREIGNKEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS media_item_categories (
@@ -333,7 +333,7 @@ export class DrizzleStorage implements IStorage {
           category_id TEXT,
           PRIMARY KEY (media_item_id, category_id),
           FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
-          FOREIGNKEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+          FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS api_options (

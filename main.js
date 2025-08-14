@@ -1,79 +1,14 @@
-
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
-import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let serverProcess = null;
-let serverInfo = { port: 5000 }; // Define serverInfo with default port
+const isDev = process.env.NODE_ENV === 'development';
+const port = 5000; // As defined in package.json dev:server script
 
-const startServer = () => {
-  return new Promise((resolve, reject) => {
-    serverProcess = spawn('npm', ['run', 'dev:server'], {
-      cwd: __dirname,
-      stdio: 'pipe'
-    });
-
-    let serverStarted = false;
-
-    serverProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      console.log('Server:', output);
-      
-      // Look for server startup confirmation
-      if ((output.includes('Server running on') || output.includes('listening on') || output.includes('started at')) && !serverStarted) {
-        serverStarted = true;
-        // Extract port if mentioned in output
-        const portMatch = output.match(/:(\d+)/);
-        if (portMatch) {
-          serverInfo.port = parseInt(portMatch[1]);
-        }
-        console.log('Server detected as started, port:', serverInfo.port);
-        resolve(serverInfo);
-      }
-    });
-
-    serverProcess.stderr.on('data', (data) => {
-      console.error('Server Error:', data.toString());
-    });
-
-    serverProcess.on('error', (error) => {
-      console.error('Failed to start server process:', error);
-      reject(error);
-    });
-
-    serverProcess.on('exit', (code) => {
-      if (code !== 0 && !serverStarted) {
-        reject(new Error(`Server process exited with code ${code}`));
-      }
-    });
-
-    // Fallback timeout
-    setTimeout(() => {
-      if (!serverStarted) {
-        resolve(serverInfo); // Resolve with default port
-      }
-    }, 10000);
-  });
-};
-
-async function createWindow() {
-  // Start server first
-  try {
-    await startServer();
-    console.log('Server started successfully on port:', serverInfo.port);
-    
-    // Wait for server to be ready
-    await healthCheck(serverInfo.port);
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    // Continue anyway with default port
-  }
-
+function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -81,57 +16,28 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false // Allow loading from localhost
+      webSecurity: !isDev, // Allow loading from localhost in dev
     },
-    icon: path.join(__dirname, 'attached_assets', 'image_1755143284120.png'), // App icon
-    show: false // Don't show until ready
+    icon: path.join(__dirname, 'attached_assets', 'image_1755143284120.png'),
+    show: false,
   });
 
-  // Send server info to renderer process
   win.webContents.once('did-finish-load', () => {
-    win.webContents.send('server-info', serverInfo);
-    win.show(); // Show window after content loads
+    win.show();
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    win.loadURL(`http://localhost:${serverInfo.port}`);
+  if (isDev) {
+    // In development, load from the Vite dev server
+    win.loadURL(`http://localhost:${port}`);
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, 'dist/public/index.html'));
+    // In production, load the built index.html file
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
-
-  return win;
 }
 
-async function healthCheck(port) {
-  console.log(`Starting health check for port ${port}`);
-  for (let i = 0; i < 30; i++) { // Increased attempts
-    try {
-      const response = await fetch(`http://localhost:${port}/health`, {
-        timeout: 2000
-      });
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Health check passed:', data);
-        return;
-      } else {
-        console.log(`Health check attempt ${i + 1}: Server responded with status ${response.status}`);
-      }
-    } catch (e) {
-      console.log(`Health check attempt ${i + 1} failed:`, e.message);
-    }
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-  console.warn('Health check failed after 30 attempts, continuing anyway');
-}
-
-app.whenReady().then(async () => {
-  try {
-    await createWindow();
-  } catch (error) {
-    console.error('Failed to create window:', error);
-    app.quit();
-  }
+app.whenReady().then(() => {
+  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -140,29 +46,12 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('before-quit', (event) => {
-  if (serverProcess) {
-    event.preventDefault();
-    console.log('Stopping server...');
-    
-    serverProcess.kill('SIGTERM');
-    
-    setTimeout(() => {
-      if (serverProcess && !serverProcess.killed) {
-        serverProcess.kill('SIGKILL');
-      }
-      app.exit();
-    }, 3000);
-  }
-});
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
