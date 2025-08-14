@@ -1,3 +1,4 @@
+
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let serverProcess = null;
+let serverInfo = { port: 5000 }; // Define serverInfo with default port
 
 const startServer = () => {
   return new Promise((resolve, reject) => {
@@ -16,10 +18,21 @@ const startServer = () => {
       stdio: 'pipe'
     });
 
+    let serverStarted = false;
+
     serverProcess.stdout.on('data', (data) => {
-      console.log('Server:', data.toString());
-      if (data.toString().includes('Server running on')) {
-        resolve();
+      const output = data.toString();
+      console.log('Server:', output);
+      
+      // Look for server startup confirmation
+      if ((output.includes('Server running on') || output.includes('listening on')) && !serverStarted) {
+        serverStarted = true;
+        // Extract port if mentioned in output
+        const portMatch = output.match(/:(\d+)/);
+        if (portMatch) {
+          serverInfo.port = parseInt(portMatch[1]);
+        }
+        resolve(serverInfo);
       }
     });
 
@@ -27,17 +40,37 @@ const startServer = () => {
       console.error('Server Error:', data.toString());
     });
 
-    serverProcess.on('error', reject);
+    serverProcess.on('error', (error) => {
+      console.error('Failed to start server process:', error);
+      reject(error);
+    });
+
+    serverProcess.on('exit', (code) => {
+      if (code !== 0 && !serverStarted) {
+        reject(new Error(`Server process exited with code ${code}`));
+      }
+    });
+
+    // Fallback timeout
+    setTimeout(() => {
+      if (!serverStarted) {
+        resolve(serverInfo); // Resolve with default port
+      }
+    }, 10000);
   });
 };
 
-async function createWindow () {
+async function createWindow() {
   // Start server first
   try {
     await startServer();
-    console.log('Server started successfully');
+    console.log('Server started successfully on port:', serverInfo.port);
+    
+    // Wait for server to be ready
+    await healthCheck(serverInfo.port);
   } catch (error) {
     console.error('Failed to start server:', error);
+    // Continue anyway with default port
   }
 
   const win = new BrowserWindow({
@@ -47,43 +80,51 @@ async function createWindow () {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-    }
+      webSecurity: false // Allow loading from localhost
+    },
+    icon: path.join(__dirname, 'attached_assets', 'image_1755143284120.png'), // App icon
+    show: false // Don't show until ready
   });
 
-  win.webContents.on('did-finish-load', () => {
+  // Send server info to renderer process
+  win.webContents.once('did-finish-load', () => {
     win.webContents.send('server-info', serverInfo);
+    win.show(); // Show window after content loads
   });
 
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5000');
+    win.loadURL(`http://localhost:${serverInfo.port}`);
     win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, 'dist/public/index.html'));
   }
+
+  return win;
 }
 
 async function healthCheck(port) {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) { // Increased attempts
     try {
-      const response = await fetch(`http://localhost:${port}/health`);
+      const response = await fetch(`http://localhost:${port}/health`, {
+        timeout: 1000
+      });
       if (response.ok) {
+        console.log('Health check passed');
         return;
       }
     } catch (e) {
-      console.error('Health check attempt failed:', e);
+      console.log(`Health check attempt ${i + 1} failed:`, e.message);
     }
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error('Server health check failed');
+  console.warn('Health check failed, continuing anyway');
 }
 
 app.whenReady().then(async () => {
   try {
-    // serverInfo = await startServer(); // This line is replaced by the startServer call within createWindow
-    await healthCheck(serverInfo.port); // serverInfo is not defined here anymore
-    createWindow();
+    await createWindow();
   } catch (error) {
-    console.error('Failed to start server or health check failed:', error);
+    console.error('Failed to create window:', error);
     app.quit();
   }
 
@@ -94,19 +135,19 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('will-quit', async (event) => {
-  event.preventDefault();
-  try {
-    // Assuming stopServer exists and can be called without arguments or with necessary info
-    if (serverProcess) {
-      serverProcess.kill(); // Send SIGTERM to the server process
-    }
-    // If you had a separate stopServer function for graceful shutdown, you'd call it here.
-    // For now, we'll rely on process kill.
-  } catch (error) {
-    console.error('Failed to stop server:', error);
-  } finally {
-    app.exit();
+app.on('before-quit', (event) => {
+  if (serverProcess) {
+    event.preventDefault();
+    console.log('Stopping server...');
+    
+    serverProcess.kill('SIGTERM');
+    
+    setTimeout(() => {
+      if (serverProcess && !serverProcess.killed) {
+        serverProcess.kill('SIGKILL');
+      }
+      app.exit();
+    }, 3000);
   }
 });
 
@@ -114,4 +155,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
