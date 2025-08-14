@@ -1,14 +1,33 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = process.env.NODE_ENV === 'development';
-const port = 5000; // As defined in package.json dev:server script
+const port = 5000;
 
-function createWindow() {
+async function healthCheck() {
+  const maxRetries = 30; // 30 retries * 1 second = 30 seconds max wait
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(`http://localhost:${port}/health`, { timeout: 1000 });
+      if (response.ok) {
+        console.log('Health check passed. Server is ready.');
+        return;
+      }
+    } catch (e) {
+      // Ignore connection refused errors and try again
+    }
+    console.log(`Health check attempt ${i + 1}/${maxRetries} failed. Retrying in 1 second...`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  throw new Error('Server did not become ready in time.');
+}
+
+async function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -16,7 +35,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: !isDev, // Allow loading from localhost in dev
+      webSecurity: !isDev,
     },
     icon: path.join(__dirname, 'attached_assets', 'image_1755143284120.png'),
     show: false,
@@ -27,21 +46,20 @@ function createWindow() {
   });
 
   if (isDev) {
-    // In development, load from the Vite dev server
+    await healthCheck(); // Wait for the server to be ready
     win.loadURL(`http://localhost:${port}`);
     win.webContents.openDevTools();
   } else {
-    // In production, load the built index.html file
     win.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(async () => {
+  await createWindow();
 
-  app.on('activate', () => {
+  app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      await createWindow();
     }
   });
 });
