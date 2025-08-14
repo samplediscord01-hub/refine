@@ -39,13 +39,24 @@ export default function AddMedia() {
     <div className="min-h-screen bg-slate-900 text-slate-50 p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">Add New Media</h1>
-        <p className="text-slate-400 mb-6">
-          Paste a list of URLs (one per line) to add new media items. They will be scraped in the background.
-        </p>
+        <div className="text-slate-400 mb-6">
+          <p className="mb-2">
+            Paste URLs (one per line) to add new media items. Metadata will be scraped automatically.
+          </p>
+          <div className="text-sm text-slate-500">
+            ✅ Supported: TeraBox, 1fichier, and other file sharing links<br/>
+            ✅ Bulk import: Add multiple URLs separated by line breaks<br/>
+            ✅ Auto-detection: Video, image, and folder types
+          </div>
+        </div>
         <Textarea
           value={urls}
           onChange={(e) => setUrls(e.target.value)}
-          placeholder="https://terabox.com/s/1abcd..."
+          placeholder={`https://terabox.com/s/1abcd...
+https://1fichier.com/?xyz123...
+https://terabox.com/s/2efgh...
+
+(Add one URL per line for bulk import)`}
           className="bg-slate-800 border-slate-600 min-h-[200px] mb-4"
         />
         <div className="flex justify-end gap-4">

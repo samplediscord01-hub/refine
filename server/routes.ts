@@ -50,7 +50,7 @@ async function scrapeMetadata(mediaItemId: string, storage: IStorage) {
 }
 
 export async function registerRoutes(app: Express, storage: IStorage): Promise<Server> {
-  
+
   app.get("/health", (req, res) => {
     res.status(200).send("OK");
   });
@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
   app.get("/api/media", async (req, res) => {
     try {
       const { search, tags, type, sizeRange, page = "1", limit = "20" } = req.query;
-      
+
       const params: MediaSearchParams = {
         search: search as string,
         tags: tags ? (Array.isArray(tags) ? tags as string[] : [tags as string]) : undefined,
@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
       };
 
       const result = await storage.getMediaItems(params);
-      
+
       // Check for missing metadata and trigger background fetching for current page items
       const itemsNeedingMetadata = result.items.filter(item => 
         !item.title || item.title === "Processing..." || 
@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
 
       // Always refresh download URL since it expires
       const result = await tryProxiesForDownload(mediaItem.url);
-      
+
       if (result) {
         const updates = {
           downloadUrl: result.download_url,
@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
           size: result.size || mediaItem.size,
           error: null
         };
-        
+
         const updatedItem = await storage.updateMediaItem(req.params.id, updates);
         res.json({ success: true, mediaItem: updatedItem });
       } else {
@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
     try {
       const { apiId } = req.query;
       const mediaItem = await storage.getMediaItem(req.params.id);
-      
+
       if (!mediaItem) {
         return res.status(404).json({ error: "Media item not found" });
       }
@@ -260,7 +260,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
 
       // Try to get fresh download URL
       const result = await tryProxiesForDownload(mediaItem.url);
-      
+
       if (result) {
         // Update the media item with fresh download info
         await storage.updateMediaItem(req.params.id, {
@@ -728,17 +728,29 @@ async function tryProxiesForDownload(originalUrl: string) {
         j = { rawText: text };
       }
 
+      // heuristics: many proxies respond with e.g. { download_link: "...", file_name: "...", size: "...", expires_in: 28800 }
+      // check common fields
       const linkCandidates = [
         j?.download_link, j?.downloadUrl, j?.download_url, j?.file, j?.file_url, j?.link, j?.url
       ].filter(Boolean);
 
+      // also if j has nested result object
       if (!linkCandidates.length && j) {
         for (const k of Object.keys(j)) {
           if (typeof j[k] === 'string' && (j[k].includes('terabox') || j[k].includes('dm-d.terabox') || j[k].match(/\.mp4(\?|$)/i))) {
             linkCandidates.push(j[k]);
           } else if (typeof j[k] === 'object' && j[k]) {
-            for (const k2 of Object.keys(j[k])) {
-              if (typeof j[k][k2] === 'string' && j[k][k2].includes('terabox')) linkCandidates.push(j[k][k2]);
+            // Extract nested metadata
+            const nested = j[k];
+            if (nested.download_url || nested.download_link || nested.url) {
+              linkCandidates.push(nested.download_url || nested.download_link || nested.url);
+              // Merge nested metadata into main object
+              Object.assign(j, nested);
+            }
+            for (const k2 of Object.keys(nested)) {
+              if (typeof nested[k2] === 'string' && nested[k2].includes('terabox')) {
+                linkCandidates.push(nested[k2]);
+              }
             }
           }
         }
@@ -747,8 +759,22 @@ async function tryProxiesForDownload(originalUrl: string) {
       if (linkCandidates.length) {
         const download_url = linkCandidates[0];
         const expires_at = parseExpiryFromResponse(j, download_url);
-        const size = j?.size || j?.filesize || j?.file_size || null;
-        return { download_url, expires_at, size, raw: j, proxy: proxy.name };
+
+        // Enhanced size extraction
+        const size = j?.size || j?.filesize || j?.file_size || j?.length || 
+                    j?.data?.size || j?.result?.size || null;
+
+        // Enhanced metadata extraction
+        const enhancedRaw = {
+          ...j,
+          title: j?.title || j?.filename || j?.name || j?.file_name || j?.data?.title || j?.result?.title,
+          thumbnail: j?.thumbnail || j?.thumb || j?.preview || j?.image || j?.data?.thumbnail || j?.result?.thumbnail,
+          description: j?.description || j?.desc || j?.data?.description || j?.result?.description,
+          duration: j?.duration || j?.length || j?.time || j?.data?.duration || j?.result?.duration,
+          mime_type: j?.mime_type || j?.mimeType || j?.type || j?.data?.type || j?.result?.type,
+        };
+
+        return { download_url, expires_at, size, raw: enhancedRaw, proxy: proxy.name };
       }
 
       if (j?.rawText) {
