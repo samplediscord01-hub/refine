@@ -8,11 +8,24 @@ channel = "stable-25_05"
 run = ["sh", "-c", "npm run dev"]
 
 [workflows]
-runButton = "Development"
+runButton = "Full Stack Dev"
 
 [[workflows.workflow]]
 name = "Development"
 author = 46409113
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && npm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
+
+[[workflows.workflow]]
+name = "Full Stack Dev"
+author = 46400127
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
