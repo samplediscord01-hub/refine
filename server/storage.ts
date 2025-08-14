@@ -52,6 +52,7 @@ export interface IStorage {
   updateApiOption(id: string, updates: Partial<ApiOption>): Promise<ApiOption | undefined>;
   deleteApiOption(id: string): Promise<boolean>;
   close(): Promise<void>;
+  initializeDatabase(): Promise<void>;
 }
 
 export class DrizzleStorage implements IStorage {
@@ -282,5 +283,85 @@ export class DrizzleStorage implements IStorage {
   async deleteApiOption(id: string): Promise<boolean> {
     await this.db.delete(schema.apiOptions).where(eq(schema.apiOptions.id, id));
     return true;
+  }
+
+  async initializeDatabase() {
+    // Create tables if they don't exist
+    await new Promise((resolve, reject) => {
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS media_items (
+          id TEXT PRIMARY KEY,
+          url TEXT UNIQUE NOT NULL,
+          title TEXT,
+          description TEXT,
+          thumbnail TEXT,
+          duration INTEGER,
+          size INTEGER,
+          type TEXT DEFAULT 'video',
+          download_url TEXT,
+          download_expires_at DATETIME,
+          download_fetched_at DATETIME,
+          error TEXT,
+          scraped_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS tags (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          color TEXT DEFAULT 'primary',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS categories (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS media_item_tags (
+          media_item_id TEXT,
+          tag_id TEXT,
+          PRIMARY KEY (media_item_id, tag_id),
+          FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
+          FOREIGNKEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS media_item_categories (
+          media_item_id TEXT,
+          category_id TEXT,
+          PRIMARY KEY (media_item_id, category_id),
+          FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
+          FOREIGNKEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS api_options (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          url TEXT NOT NULL,
+          method TEXT DEFAULT 'POST',
+          type TEXT DEFAULT 'json',
+          field TEXT DEFAULT 'url',
+          status TEXT DEFAULT 'available',
+          is_active BOOLEAN DEFAULT true,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Insert default API options if they don't exist
+        INSERT OR IGNORE INTO api_options (id, name, url, method, type, field) VALUES
+        ('playertera', 'PlayerTera', '/api/playertera-proxy', 'POST', 'json', 'url'),
+        ('tera-fast', 'TeraFast', '/api/tera-fast-proxy', 'GET', 'query', 'url'),
+        ('teradwn', 'TeraDownloadr', '/api/teradwn-proxy', 'POST', 'json', 'link'),
+        ('iteraplay', 'IteraPlay', '/api/iteraplay-proxy', 'POST', 'json', 'link'),
+        ('raspywave', 'RaspyWave', '/api/raspywave-proxy', 'POST', 'json', 'link'),
+        ('rapidapi', 'RapidAPI', '/api/rapidapi-proxy', 'POST', 'json', 'link'),
+        ('tera-downloader-cc', 'Tera Downloader CC', '/api/tera-downloader-cc-proxy', 'POST', 'json', 'url');
+      `, (err) => {
+        if (err) reject(err);
+        else resolve(undefined);
+      });
+    });
   }
 }

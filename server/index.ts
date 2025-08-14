@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { DrizzleStorage, type IStorage } from "./storage";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
+import { DrizzleStorage, type IStorage } from "./storage.js";
 import type { Server } from "http";
 
 let server: Server | null = null;

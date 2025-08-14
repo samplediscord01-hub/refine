@@ -1,15 +1,45 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startServer, stopServer } from './server/index.js';
+import { spawn } from 'child_process';
 import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let serverInfo;
+let serverProcess = null;
 
-function createWindow () {
+const startServer = () => {
+  return new Promise((resolve, reject) => {
+    serverProcess = spawn('npm', ['run', 'dev:server'], {
+      cwd: __dirname,
+      stdio: 'pipe'
+    });
+
+    serverProcess.stdout.on('data', (data) => {
+      console.log('Server:', data.toString());
+      if (data.toString().includes('Server running on')) {
+        resolve();
+      }
+    });
+
+    serverProcess.stderr.on('data', (data) => {
+      console.error('Server Error:', data.toString());
+    });
+
+    serverProcess.on('error', reject);
+  });
+};
+
+async function createWindow () {
+  // Start server first
+  try {
+    await startServer();
+    console.log('Server started successfully');
+  } catch (error) {
+    console.error('Failed to start server:', error);
+  }
+
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -49,8 +79,8 @@ async function healthCheck(port) {
 
 app.whenReady().then(async () => {
   try {
-    serverInfo = await startServer();
-    await healthCheck(serverInfo.port);
+    // serverInfo = await startServer(); // This line is replaced by the startServer call within createWindow
+    await healthCheck(serverInfo.port); // serverInfo is not defined here anymore
     createWindow();
   } catch (error) {
     console.error('Failed to start server or health check failed:', error);
@@ -67,7 +97,12 @@ app.whenReady().then(async () => {
 app.on('will-quit', async (event) => {
   event.preventDefault();
   try {
-    await stopServer();
+    // Assuming stopServer exists and can be called without arguments or with necessary info
+    if (serverProcess) {
+      serverProcess.kill(); // Send SIGTERM to the server process
+    }
+    // If you had a separate stopServer function for graceful shutdown, you'd call it here.
+    // For now, we'll rely on process kill.
   } catch (error) {
     console.error('Failed to stop server:', error);
   } finally {

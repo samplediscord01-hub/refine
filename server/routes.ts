@@ -662,6 +662,28 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
     }
   });
 
+  app.get("/api/ronnieverse-client", async (req, res) => {
+    const { url } = req.query;
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
+    try {
+      const response = await fetch(`https://ronnieverse.dev/api/terabox?url=${encodeURIComponent(url as string)}`, {
+        method: "GET",
+        headers: {
+          "accept": "application/json",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+      });
+
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+    }
+  });
+
   app.post("/api/raspywave-proxy", async (req, res) => {
     const link = req.body.link;
     if (!link) {

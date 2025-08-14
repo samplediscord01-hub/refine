@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, RefreshCw, Download, Play, Trash2, Plus, Folder } from "lucide-react";
+import { X, RefreshCw, Download, Play, Trash2, Plus, Folder, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "./video-player";
 import { useMediaItem } from "@/hooks/use-media";
-import { refreshMetadata, deleteMediaItem as deleteMediaItemApi, checkAndFetchMetadata } from "@/lib/api";
+import { refreshMetadata, deleteMediaItem as deleteMediaItemApi, checkAndFetchMetadata, getDownloadUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItemWithTagsAndCategories, ApiOption } from "@shared/schema";
 import { TagCategoryManager } from "./tag-category-manager";
