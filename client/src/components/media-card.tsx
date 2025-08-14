@@ -1,4 +1,4 @@
-import { Play, Video, Folder, Clock } from "lucide-react";
+import { Play, Video, Folder, Clock, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { MediaItemWithTags } from "@shared/schema";
 
@@ -6,6 +6,8 @@ interface MediaCardProps {
   item: MediaItemWithTags;
   viewMode: "grid" | "list";
   onClick: () => void;
+  isLoadingMetadata?: boolean; // Added to indicate loading state
+  currentItem?: MediaItemWithTags; // Added to pass the current item for thumbnail if different
 }
 
 const getTagColor = (color: string | null) => {
@@ -37,7 +39,7 @@ const formatDuration = (seconds: number | null) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  
+
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
@@ -49,7 +51,7 @@ const formatDate = (date: Date | null) => {
   const now = new Date();
   const diff = now.getTime() - new Date(date).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
+
   if (days === 0) return "Today";
   if (days === 1) return "1 day ago";
   if (days < 7) return `${days} days ago`;
@@ -57,7 +59,7 @@ const formatDate = (date: Date | null) => {
   return new Date(date).toLocaleDateString();
 };
 
-export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
+export function MediaCard({ item, viewMode, onClick, isLoadingMetadata, currentItem }: MediaCardProps) {
   const isFolder = item.type === "folder";
 
   if (viewMode === "list") {
@@ -74,7 +76,13 @@ export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
               </div>
             ) : (
               <>
-                {item.thumbnail ? (
+                {isLoadingMetadata ? (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                    <RefreshCw className="text-primary w-8 h-8 animate-spin" />
+                  </div>
+                ) : currentItem?.thumbnail ? (
+                  <img src={currentItem.thumbnail} alt={currentItem.title} className="w-full h-full object-cover" />
+                ) : item.thumbnail ? (
                   <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
                 ) : (
                   <Video className="text-primary w-8 h-8" />
@@ -85,7 +93,7 @@ export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
               </>
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm mb-1 truncate">{item.title}</h3>
             <div className="flex items-center space-x-4 text-xs text-slate-400 mb-2">
@@ -139,7 +147,13 @@ export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
           </div>
         ) : (
           <>
-            {item.thumbnail ? (
+            {isLoadingMetadata ? (
+              <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                <RefreshCw className="text-primary w-8 h-8 animate-spin" />
+              </div>
+            ) : currentItem?.thumbnail ? (
+              <img src={currentItem.thumbnail} alt={currentItem.title} className="w-full h-full object-cover" />
+            ) : item.thumbnail ? (
               <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
             ) : (
               <div className="bg-slate-700 w-full h-full flex items-center justify-center">
@@ -151,7 +165,7 @@ export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
             </div>
           </>
         )}
-        
+
         <div className="absolute top-2 left-2">
           <Badge className="bg-black/70 text-white text-xs">
             {isFolder ? 'FOLDER' : 'HD'}
@@ -171,7 +185,7 @@ export function MediaCard({ item, viewMode, onClick }: MediaCardProps) {
           </div>
         )}
       </div>
-      
+
       <div className="p-4">
         <h3 className="font-semibold text-sm mb-2 line-clamp-2">{item.title}</h3>
         <div className="flex items-center space-x-2 text-xs text-slate-400 mb-2">

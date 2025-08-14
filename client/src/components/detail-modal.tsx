@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, RefreshCw, Download, Play, Trash2, Plus, Video, Folder } from "lucide-react";
+import { X, RefreshCw, Download, Play, Trash2, Plus, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "./video-player";
 import { useMediaItem } from "@/hooks/use-media";
-import { refreshMetadata, deleteMediaItem as deleteMediaItemApi } from "@/lib/api";
+import { refreshMetadata, deleteMediaItem as deleteMediaItemApi, checkAndFetchMetadata } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItemWithTagsAndCategories, ApiOption } from "@shared/schema";
 import { TagCategoryManager } from "./tag-category-manager";
@@ -60,7 +59,27 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: mediaItem, isLoading: mediaLoading } = useMediaItem(mediaId);
+  const { data: mediaItem, isLoading: mediaLoading, error: mediaError } = useMediaItem(mediaId);
+
+  // Check for missing metadata when detail modal opens
+  useEffect(() => {
+    if (mediaItem && (!mediaItem.title || mediaItem.title === "Processing..." || !mediaItem.thumbnail || !mediaItem.scrapedAt)) {
+      checkAndFetchMetadata(mediaId)
+        .then(() => {
+          // Refresh the query to get updated data
+          queryClient.invalidateQueries({ queryKey: ['mediaItem', mediaId] });
+        })
+        .catch(error => {
+          console.error("Failed to fetch metadata:", error);
+          toast({
+            title: "Metadata Fetch Failed",
+            description: "Could not fetch metadata automatically.",
+            variant: "destructive",
+          });
+        });
+    }
+  }, [mediaItem, mediaId, queryClient, toast]);
+
 
   const { data: apiOptions = [] } = useQuery<ApiOption[]>({
     queryKey: ["/api/api-options"],
@@ -151,12 +170,41 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
     setIsPlaying(true);
   };
 
-  if (mediaLoading || !mediaItem) {
+  if (mediaLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={() => onClose()}>
         <DialogContent className="max-w-4xl max-h-[90vh] bg-surface-light border-slate-600">
           <div className="flex items-center justify-center h-96">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (mediaError) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-surface-light border-slate-600">
+          <div className="flex flex-col items-center justify-center h-96 text-destructive">
+            <p>Error loading media: {mediaError.message}</p>
+            <Button onClick={onClose} className="mt-4">Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // If mediaItem is still null or undefined after loading, but no error, it might mean the item doesn't exist.
+  // However, the original code proceeds assuming mediaItem is available. We'll stick to that behavior.
+  // If mediaItem is truly null/undefined here, the subsequent rendering will likely cause errors.
+  // A more robust solution might involve handling this case explicitly if mediaId is valid but no data is returned.
+  if (!mediaItem) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-surface-light border-slate-600">
+          <div className="flex items-center justify-center h-96">
+            <p className="text-slate-400">Media item not found.</p>
           </div>
         </DialogContent>
       </Dialog>

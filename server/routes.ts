@@ -70,6 +70,22 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
       };
 
       const result = await storage.getMediaItems(params);
+      
+      // Check for missing metadata and trigger background fetching for current page items
+      const itemsNeedingMetadata = result.items.filter(item => 
+        !item.title || item.title === "Processing..." || 
+        !item.thumbnail || !item.scrapedAt
+      );
+
+      // Trigger background metadata fetching for items missing data
+      if (itemsNeedingMetadata.length > 0) {
+        Promise.all(
+          itemsNeedingMetadata.map(item => scrapeMetadata(item.id, storage))
+        ).catch(error => {
+          console.error("Background metadata fetching failed:", error);
+        });
+      }
+
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch media items" });
@@ -96,9 +112,13 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
       for (const url of urls) {
         let mediaItem = await storage.getMediaItemByUrl(url);
         if (!mediaItem) {
-          mediaItem = await storage.createMediaItem({ url, title: "Processing..." });
-          // Trigger background scraping
-          scrapeMetadata(mediaItem.id, storage);
+          // Create with minimal metadata - don't auto-scrape
+          mediaItem = await storage.createMediaItem({ 
+            url, 
+            title: "Processing...",
+            description: null,
+            thumbnail: null
+          });
         }
         createdItems.push(mediaItem);
       }
@@ -145,7 +165,16 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
         return res.status(404).json({ error: "Media item not found" });
       }
 
-      // Call multiScraper to refresh metadata
+      // Check if we need to fetch metadata from database first
+      const needsMetadata = !mediaItem.title || mediaItem.title === "Processing..." || 
+                           !mediaItem.thumbnail || !mediaItem.scrapedAt;
+
+      if (needsMetadata) {
+        // Fetch full metadata including title, thumbnail, etc.
+        await scrapeMetadata(req.params.id, storage);
+      }
+
+      // Always refresh download URL since it expires
       const result = await tryProxiesForDownload(mediaItem.url);
       
       if (result) {
@@ -169,6 +198,40 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
     } catch (error) {
       console.error("Refresh metadata error:", error);
       res.status(500).json({ error: "Failed to refresh metadata" });
+    }
+  });
+
+  // Check and fetch metadata for specific media item
+  app.post("/api/media/:id/metadata", async (req, res) => {
+    try {
+      const mediaItem = await storage.getMediaItem(req.params.id);
+      if (!mediaItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+
+      // Check if metadata exists in database
+      const hasMetadata = mediaItem.title && mediaItem.title !== "Processing..." && 
+                         mediaItem.thumbnail && mediaItem.scrapedAt;
+
+      if (!hasMetadata) {
+        // Invoke multiScraper to fetch metadata
+        await scrapeMetadata(req.params.id, storage);
+        const updatedItem = await storage.getMediaItem(req.params.id);
+        res.json({ 
+          success: true, 
+          mediaItem: updatedItem,
+          action: "fetched"
+        });
+      } else {
+        res.json({ 
+          success: true, 
+          mediaItem: mediaItem,
+          action: "cached"
+        });
+      }
+    } catch (error) {
+      console.error("Metadata check error:", error);
+      res.status(500).json({ error: "Failed to check/fetch metadata" });
     }
   });
 

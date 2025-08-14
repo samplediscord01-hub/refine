@@ -79,3 +79,5 @@ export const getDownloadUrl = (id: string, apiId?: string) => {
   const query = apiId ? `?apiId=${apiId}` : '';
   return apiRequest<{ source: string; downloadUrl: string; expiresAt: string; proxy?: string }>('GET', `/api/media/${id}/download${query}`);
 };
+
+export const checkAndFetchMetadata = (id: string) => apiRequest<{ success: boolean; mediaItem: any; action: string }>('POST', `/api/media/${id}/metadata`);
