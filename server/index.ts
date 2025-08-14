@@ -4,12 +4,26 @@ import { setupVite, serveStatic, log } from "./vite.js";
 import { DrizzleStorage, type IStorage } from "./storage.js";
 import type { Server } from "http";
 
+// CORS middleware
+function enableCORS(req: Request, res: Response, next: NextFunction) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+}
+
 let server: Server | null = null;
 let storage: IStorage | null = null;
 
 export async function startServer(dbName?: string): Promise<{ app: express.Application; server: Server; port: number, storage: IStorage }> {
   storage = new DrizzleStorage(dbName);
   const app = express();
+  app.use(enableCORS);
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 

@@ -6,6 +6,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:electron\"",
+    "dev:web": "npm run dev:server",
     "dev:server": "NODE_ENV=development tsx watch server/index.ts",
     "dev:electron": "electron .",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
