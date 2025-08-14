@@ -25,13 +25,14 @@ const startServer = () => {
       console.log('Server:', output);
       
       // Look for server startup confirmation
-      if ((output.includes('Server running on') || output.includes('listening on')) && !serverStarted) {
+      if ((output.includes('Server running on') || output.includes('listening on') || output.includes('started at')) && !serverStarted) {
         serverStarted = true;
         // Extract port if mentioned in output
         const portMatch = output.match(/:(\d+)/);
         if (portMatch) {
           serverInfo.port = parseInt(portMatch[1]);
         }
+        console.log('Server detected as started, port:', serverInfo.port);
         resolve(serverInfo);
       }
     });
@@ -103,21 +104,25 @@ async function createWindow() {
 }
 
 async function healthCheck(port) {
-  for (let i = 0; i < 20; i++) { // Increased attempts
+  console.log(`Starting health check for port ${port}`);
+  for (let i = 0; i < 30; i++) { // Increased attempts
     try {
       const response = await fetch(`http://localhost:${port}/health`, {
-        timeout: 1000
+        timeout: 2000
       });
       if (response.ok) {
-        console.log('Health check passed');
+        const data = await response.json();
+        console.log('Health check passed:', data);
         return;
+      } else {
+        console.log(`Health check attempt ${i + 1}: Server responded with status ${response.status}`);
       }
     } catch (e) {
       console.log(`Health check attempt ${i + 1} failed:`, e.message);
     }
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  console.warn('Health check failed, continuing anyway');
+  console.warn('Health check failed after 30 attempts, continuing anyway');
 }
 
 app.whenReady().then(async () => {

@@ -63,6 +63,16 @@ export async function startServer(dbName?: string): Promise<{ app: Express.Appli
 
   const port = parseInt(process.env.PORT || '5000', 10);
 
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      port: port,
+      environment: process.env.NODE_ENV || 'development',
+      electron: true
+    });
+  });
+
   return new Promise((resolve) => {
     server!.listen({
       port,

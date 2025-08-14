@@ -1,6 +1,16 @@
 import { type MediaSearchParams, type ApiOption } from "@shared/schema";
 
-export const API_BASE_URL = window.electronAPI?.serverAddress || import.meta.env.VITE_API_BASE_URL || '';
+const getBaseURL = () => {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    console.log('Using Electron server address:', window.electronAPI.serverAddress);
+    return window.electronAPI.serverAddress;
+  }
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  console.log('Using default server address:', baseUrl);
+  return baseUrl;
+};
+
+export const API_BASE_URL = getBaseURL();
 
 async function apiRequest<T>(
   method: string,
@@ -8,7 +18,7 @@ async function apiRequest<T>(
   data?: unknown
 ): Promise<T> {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  
+
   console.log(`[API Request] ${method} ${fullUrl}`, data);
 
   try {
