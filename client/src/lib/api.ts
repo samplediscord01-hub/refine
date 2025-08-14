@@ -92,72 +92,112 @@ export const getDownloadUrl = (id: string, apiId?: string) => {
 
 export const checkAndFetchMetadata = (id: string) => apiRequest<{ success: boolean; mediaItem: any; action: string }>('POST', `/api/media/${id}/metadata`);
 
+// Download functions
+export const downloadFile = async (url: string, filename: string) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Download failed');
+
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
+};
+
+// Categories API
 export async function getCategories(): Promise<any[]> {
   try {
     const response = await fetch('/api/categories');
     if (!response.ok) {
-      throw new Error('Failed to fetch categories');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Get categories error:', error);
+    console.error('Error fetching categories:', error);
     return [];
   }
 }
 
 export async function createCategory(name: string) {
-  const response = await fetch('/api/categories', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to create category');
+  try {
+    const response = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating category:', error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function deleteCategory(id: string) {
-  const response = await fetch(`/api/categories/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete category');
+  try {
+    const response = await fetch(`/api/categories/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    throw error;
   }
-  return response.json();
 }
 
+// Tags API
 export async function getTags(): Promise<any[]> {
   try {
     const response = await fetch('/api/tags');
     if (!response.ok) {
-      throw new Error('Failed to fetch tags');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Get tags error:', error);
+    console.error('Error fetching tags:', error);
     return [];
   }
 }
 
 export async function createTag(name: string, color?: string) {
-  const response = await fetch('/api/tags', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color: color || 'blue' }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to create tag');
+  try {
+    const response = await fetch('/api/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, color })
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating tag:', error);
+    throw error;
   }
-  return response.json();
 }
 
 export async function deleteTag(id: string) {
-  const response = await fetch(`/api/tags/${id}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete tag');
+  try {
+    const response = await fetch(`/api/tags/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting tag:', error);
+    throw error;
   }
-  return response.json();
 }
