@@ -105,10 +105,7 @@ export function DetailModal({ mediaId, isOpen, onClose }: DetailModalProps) {
 
   const getDownloadUrlMutation = useMutation({
     mutationFn: async () => {
-      // This is not in the new api.ts, so we leave it as is for now.
-      const response = await fetch(`/api/media/${mediaId}/download${selectedApiId ? `?apiId=${selectedApiId}` : ''}`);
-      if (!response.ok) throw new Error("Failed to get download URL");
-      return response.json();
+      return getDownloadUrl(mediaId, selectedApiId || undefined);
     },
     onSuccess: (data) => {
       if (data.downloadUrl) {

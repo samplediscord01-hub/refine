@@ -25,25 +25,26 @@ async function scrapeMetadata(mediaItemId: string, storage: IStorage) {
   const mediaItem = await storage.getMediaItem(mediaItemId);
   if (!mediaItem) return;
 
+  // TODO: Replace this with multiscraper.py integration
+  // For now, use simplified metadata extraction without download URLs
   const result = await tryProxiesForDownload(mediaItem.url);
 
   if (result) {
     const updates = {
-      title: result.raw?.title || mediaItem.title,
+      title: result.raw?.title || mediaItem.title || "Unknown Title",
       description: result.raw?.description || mediaItem.description,
       thumbnail: result.raw?.thumbnail || mediaItem.thumbnail,
       duration: result.raw?.duration || mediaItem.duration,
       size: result.size || mediaItem.size,
-      downloadUrl: result.download_url,
-      downloadExpiresAt: new Date(result.expires_at),
-      downloadFetchedAt: new Date(),
+      type: result.raw?.mime_type?.includes('video') ? 'video' : (result.raw?.mime_type?.includes('image') ? 'image' : 'video'),
       error: null,
       scrapedAt: new Date(),
+      // Note: Not storing download URLs here - those are fetched on-demand
     };
     await storage.updateMediaItem(mediaItemId, updates);
   } else {
     await storage.updateMediaItem(mediaItemId, {
-      error: "Failed to scrape metadata from all proxies",
+      error: "Failed to scrape metadata",
       scrapedAt: new Date(),
     });
   }
@@ -245,8 +246,40 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
         return res.status(404).json({ error: "Media item not found" });
       }
 
-      // Check if we have a valid cached download URL
-      if (mediaItem.downloadUrl && mediaItem.downloadExpiresAt) {
+      // If specific API requested, use only that API
+      if (apiId) {
+        const apiOption = await storage.getApiOption(apiId);
+        if (!apiOption || !apiOption.isActive) {
+          return res.status(400).json({ error: "Invalid or inactive API selected" });
+        }
+
+        // Use specific API proxy
+        const specificProxy = API_PROXIES.find(p => p.name === apiOption.name.toLowerCase().replace(/\s+/g, '-'));
+        if (specificProxy) {
+          const result = await trySpecificProxy(mediaItem.url, specificProxy);
+          if (result) {
+            // Update the media item with fresh download info
+            await storage.updateMediaItem(req.params.id, {
+              downloadUrl: result.download_url,
+              downloadExpiresAt: new Date(result.expires_at),
+              downloadFetchedAt: new Date(),
+              size: result.size || mediaItem.size
+            });
+
+            return res.json({
+              source: "fresh",
+              downloadUrl: result.download_url,
+              expiresAt: result.expires_at,
+              proxy: result.proxy
+            });
+          } else {
+            return res.status(404).json({ error: `No download link available from ${apiOption.name}` });
+          }
+        }
+      }
+
+      // Check if we have a valid cached download URL (for non-specific requests)
+      if (!apiId && mediaItem.downloadUrl && mediaItem.downloadExpiresAt) {
         const now = new Date();
         const expiresAt = new Date(mediaItem.downloadExpiresAt);
         if (now < expiresAt) {
@@ -258,7 +291,7 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
         }
       }
 
-      // Try to get fresh download URL
+      // Try to get fresh download URL using all APIs
       const result = await tryProxiesForDownload(mediaItem.url);
 
       if (result) {
@@ -700,6 +733,80 @@ function parseExpiryFromResponse(apiResponse: any, downloadUrl?: string) {
   }
 
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString();
+}
+
+async function trySpecificProxy(originalUrl: string, proxy: any) {
+  try {
+    let res;
+    if (proxy.method === "GET") {
+      const q = `${BASE_URL}${proxy.url}?${proxy.type === "query" ? `${proxy.field}=${encodeURIComponent(originalUrl)}` : ''}`;
+      res = await fetch(q, { method: 'GET' });
+    } else {
+      const body = proxy.type === "json" ? JSON.stringify({ [proxy.field]: originalUrl }) : `${proxy.field}=${encodeURIComponent(originalUrl)}`;
+      const headers = proxy.type === "json" ? { 'Content-Type': 'application/json' } : { 'Content-Type': 'application/x-www-form-urlencoded' };
+      res = await fetch(`${BASE_URL}${proxy.url}`, { method: 'POST', headers, body });
+    }
+
+    if (!res.ok) {
+      console.warn(`[proxy ${proxy.name}] returned ${res.status}`);
+      return null;
+    }
+
+    let j: any;
+    try { 
+      j = await res.json(); 
+    } catch (e) {
+      const text = await res.text();
+      j = { rawText: text };
+    }
+
+    // Extract download link using same logic as tryProxiesForDownload
+    const linkCandidates = [
+      j?.download_link, j?.downloadUrl, j?.download_url, j?.file, j?.file_url, j?.link, j?.url
+    ].filter(Boolean);
+
+    if (!linkCandidates.length && j) {
+      for (const k of Object.keys(j)) {
+        if (typeof j[k] === 'string' && (j[k].includes('terabox') || j[k].includes('dm-d.terabox') || j[k].match(/\.mp4(\?|$)/i))) {
+          linkCandidates.push(j[k]);
+        } else if (typeof j[k] === 'object' && j[k]) {
+          const nested = j[k];
+          if (nested.download_url || nested.download_link || nested.url) {
+            linkCandidates.push(nested.download_url || nested.download_link || nested.url);
+            Object.assign(j, nested);
+          }
+          for (const k2 of Object.keys(nested)) {
+            if (typeof nested[k2] === 'string' && nested[k2].includes('terabox')) {
+              linkCandidates.push(nested[k2]);
+            }
+          }
+        }
+      }
+    }
+
+    if (linkCandidates.length) {
+      const download_url = linkCandidates[0];
+      const expires_at = parseExpiryFromResponse(j, download_url);
+      const size = j?.size || j?.filesize || j?.file_size || j?.length || 
+                  j?.data?.size || j?.result?.size || null;
+
+      return { download_url, expires_at, size, raw: j, proxy: proxy.name };
+    }
+
+    if (j?.rawText) {
+      const rx = /(https?:\/\/[^\s'"]{30,200})/g;
+      const match = rx.exec(j.rawText);
+      if (match) {
+        const download_url = match[1];
+        const expires_at = parseExpiryFromResponse(j, download_url);
+        return { download_url, expires_at, size: null, raw: j, proxy: proxy.name };
+      }
+    }
+
+  } catch (err) {
+    console.warn(`[proxy ${proxy.name}] failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
+  return null;
 }
 
 async function tryProxiesForDownload(originalUrl: string) {
