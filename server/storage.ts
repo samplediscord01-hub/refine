@@ -286,10 +286,12 @@ export class DrizzleStorage implements IStorage {
   }
 
   async initializeDatabase() {
-    // Create tables if they don't exist
-    await new Promise((resolve, reject) => {
-      this.sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS media_items (
+    console.log('DrizzleStorage.initializeDatabase: start');
+    
+    try {
+      // Execute each statement separately to avoid hanging
+      const statements = [
+        `CREATE TABLE IF NOT EXISTS media_items (
           id TEXT PRIMARY KEY,
           url TEXT UNIQUE NOT NULL,
           title TEXT,
@@ -305,38 +307,38 @@ export class DrizzleStorage implements IStorage {
           scraped_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS tags (
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS tags (
           id TEXT PRIMARY KEY,
           name TEXT UNIQUE NOT NULL,
           color TEXT DEFAULT 'primary',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS categories (
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS categories (
           id TEXT PRIMARY KEY,
           name TEXT UNIQUE NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS media_item_tags (
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS media_item_tags (
+          id TEXT PRIMARY KEY,
           media_item_id TEXT,
           tag_id TEXT,
-          PRIMARY KEY (media_item_id, tag_id),
           FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
-          FOREIGNKEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS media_item_categories (
+          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS media_item_categories (
+          id TEXT PRIMARY KEY,
           media_item_id TEXT,
           category_id TEXT,
-          PRIMARY KEY (media_item_id, category_id),
           FOREIGN KEY (media_item_id) REFERENCES media_items(id) ON DELETE CASCADE,
-          FOREIGNKEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS api_options (
+          FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS api_options (
           id TEXT PRIMARY KEY,
           name TEXT UNIQUE NOT NULL,
           url TEXT NOT NULL,
@@ -347,21 +349,41 @@ export class DrizzleStorage implements IStorage {
           is_active BOOLEAN DEFAULT true,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
+        )`
+      ];
 
-        -- Insert default API options if they don't exist
-        INSERT OR IGNORE INTO api_options (id, name, url, method, type, field) VALUES
-        ('playertera', 'PlayerTera', '/api/playertera-proxy', 'POST', 'json', 'url'),
-        ('tera-fast', 'TeraFast', '/api/tera-fast-proxy', 'GET', 'query', 'url'),
-        ('teradwn', 'TeraDownloadr', '/api/teradwn-proxy', 'POST', 'json', 'link'),
-        ('iteraplay', 'IteraPlay', '/api/iteraplay-proxy', 'POST', 'json', 'link'),
-        ('raspywave', 'RaspyWave', '/api/raspywave-proxy', 'POST', 'json', 'link'),
-        ('rapidapi', 'RapidAPI', '/api/rapidapi-proxy', 'POST', 'json', 'link'),
-        ('tera-downloader-cc', 'Tera Downloader CC', '/api/tera-downloader-cc-proxy', 'POST', 'json', 'url');
-      `, (err) => {
-        if (err) reject(err);
-        else resolve(undefined);
-      });
-    });
+      // Execute CREATE TABLE statements
+      for (const statement of statements) {
+        this.sqlite.exec(statement);
+      }
+
+      // Insert default API options
+      const insertStatement = this.sqlite.prepare(`
+        INSERT OR IGNORE INTO api_options (id, name, url, method, type, field) 
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      const defaultApiOptions = [
+        ['playertera', 'PlayerTera', '/api/playertera-proxy', 'POST', 'json', 'url'],
+        ['tera-fast', 'TeraFast', '/api/tera-fast-proxy', 'GET', 'query', 'url'],
+        ['teradwn', 'TeraDownloadr', '/api/teradwn-proxy', 'POST', 'json', 'link'],
+        ['iteraplay', 'IteraPlay', '/api/iteraplay-proxy', 'POST', 'json', 'link'],
+        ['raspywave', 'RaspyWave', '/api/raspywave-proxy', 'POST', 'json', 'link'],
+        ['rapidapi', 'RapidAPI', '/api/rapidapi-proxy', 'POST', 'json', 'link'],
+        ['tera-downloader-cc', 'Tera Downloader CC', '/api/tera-downloader-cc-proxy', 'POST', 'json', 'url']
+      ];
+
+      for (const option of defaultApiOptions) {
+        insertStatement.run(...option);
+      }
+
+      console.log('DrizzleStorage.initializeDatabase: tables created');
+      
+    } catch (error) {
+      console.error('DrizzleStorage.initializeDatabase: error', error);
+      throw error;
+    }
+    
+    console.log('DrizzleStorage.initializeDatabase: end');
   }
 }
