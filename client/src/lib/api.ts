@@ -92,12 +92,17 @@ export const getDownloadUrl = (id: string, apiId?: string) => {
 
 export const checkAndFetchMetadata = (id: string) => apiRequest<{ success: boolean; mediaItem: any; action: string }>('POST', `/api/media/${id}/metadata`);
 
-export async function getCategories() {
-  const response = await fetch('/api/categories');
-  if (!response.ok) {
-    throw new Error('Failed to fetch categories');
+export async function getCategories(): Promise<any[]> {
+  try {
+    const response = await fetch('/api/categories');
+    if (!response.ok) {
+      throw new Error('Failed to fetch categories');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Get categories error:', error);
+    return [];
   }
-  return response.json();
 }
 
 export async function createCategory(name: string) {
@@ -122,11 +127,24 @@ export async function deleteCategory(id: string) {
   return response.json();
 }
 
-export async function createTag(name: string, color: string) {
+export async function getTags(): Promise<any[]> {
+  try {
+    const response = await fetch('/api/tags');
+    if (!response.ok) {
+      throw new Error('Failed to fetch tags');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Get tags error:', error);
+    return [];
+  }
+}
+
+export async function createTag(name: string, color?: string) {
   const response = await fetch('/api/tags', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color }),
+    body: JSON.stringify({ name, color: color || 'blue' }),
   });
   if (!response.ok) {
     throw new Error('Failed to create tag');
@@ -143,7 +161,3 @@ export async function deleteTag(id: string) {
   }
   return response.json();
 }
-
-// Export existing API functions here
-export const api = {
-};

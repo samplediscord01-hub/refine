@@ -322,8 +322,9 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
   app.get("/api/tags", async (req, res) => {
     try {
       const tags = await storage.getTags();
-      res.json(tags);
+      res.json(tags || []);
     } catch (error) {
+      console.error("Get tags error:", error);
       res.status(500).json({ error: "Failed to fetch tags" });
     }
   });
@@ -381,8 +382,9 @@ export async function registerRoutes(app: Express, storage: IStorage): Promise<S
   app.get("/api/categories", async (req, res) => {
     try {
       const categories = await storage.getCategories();
-      res.json(categories);
+      res.json(categories || []);
     } catch (error) {
+      console.error("Get categories error:", error);
       res.status(500).json({ error: "Failed to fetch categories" });
     }
   });

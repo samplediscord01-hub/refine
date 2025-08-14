@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Folder, Edit2, Trash2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -252,6 +252,8 @@ export function Sidebar({
             </div>
           </div>
 
+          <Separator className="my-6" />
+
           {/* Tags Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
@@ -329,6 +331,33 @@ export function Sidebar({
               ))}
             </div>
           </div>
+
+          <Separator className="my-6" />
+
+          {/* File Type Filter */}
+          <div className="mb-8">
+            <h3 className="text-sm font-medium text-slate-300 mb-3">File Type</h3>
+            <RadioGroup
+              value={selectedType || "all"}
+              onValueChange={handleTypeChange}
+              className="space-y-2"
+            >
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="all" id="all-type" />
+                <Label htmlFor="all-type" className="text-sm cursor-pointer">All</Label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="video" id="video" />
+                <Label htmlFor="video" className="text-sm cursor-pointer">Video</Label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="folder" id="folder" />
+                <Label htmlFor="folder" className="text-sm cursor-pointer">Folder</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <Separator className="my-6" />
 
           {/* File Size Filter */}
           <div className="mb-8">
