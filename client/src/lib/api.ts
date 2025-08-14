@@ -1,3 +1,4 @@
+
 import { type MediaSearchParams, type ApiOption } from "@shared/schema";
 
 const getBaseURL = () => {
@@ -62,14 +63,14 @@ export const getMediaItem = (id: string) => apiRequest<any>('GET', `/api/media/$
 export const createMediaItems = (urls: string[]) => apiRequest<any>('POST', '/api/media', { urls });
 export const refreshMetadata = (id: string) => apiRequest<any>('POST', `/api/media/${id}/refresh`);
 
-// Tags
+// Tags - Using consistent apiRequest pattern
 export const getTags = () => apiRequest<any[]>('GET', '/api/tags');
 export const createTag = (name: string, color: string) => apiRequest<any>('POST', '/api/tags', { name, color });
 export const deleteTag = (id: string) => apiRequest<any>('DELETE', `/api/tags/${id}`);
 export const addTagToMediaItem = (mediaItemId: string, tagId: string) => apiRequest<any>('POST', `/api/media/${mediaItemId}/tags/${tagId}`);
 export const removeTagFromMediaItem = (mediaItemId: string, tagId: string) => apiRequest<any>('DELETE', `/api/media/${mediaItemId}/tags/${tagId}`);
 
-// Categories
+// Categories - Using consistent apiRequest pattern
 export const getCategories = () => apiRequest<any[]>('GET', '/api/categories');
 export const createCategory = (name: string) => apiRequest<any>('POST', '/api/categories', { name });
 export const deleteCategory = (id: string) => apiRequest<any>('DELETE', `/api/categories/${id}`);
@@ -82,7 +83,7 @@ export const createApiOption = (option: Omit<ApiOption, 'id'>) => apiRequest<Api
 export const updateApiOption = (id: string, updates: Partial<ApiOption>) => apiRequest<ApiOption>('PUT', `/api/api-options/${id}`, updates);
 export const deleteApiOption = (id: string) => apiRequest<{ success: boolean }>('DELETE', `/api/api-options/${id}`);
 
-// Media Items - Missing functions
+// Media Items - Additional functions
 export const updateMediaItem = (id: string, updates: Partial<any>) => apiRequest<any>('PUT', `/api/media/${id}`, updates);
 export const deleteMediaItem = (id: string) => apiRequest<{ success: boolean }>('DELETE', `/api/media/${id}`);
 export const getDownloadUrl = (id: string, apiId?: string) => {
@@ -107,97 +108,3 @@ export const downloadFile = async (url: string, filename: string) => {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
 };
-
-// Categories API
-export async function getCategories(): Promise<any[]> {
-  try {
-    const response = await fetch('/api/categories');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    return [];
-  }
-}
-
-export async function createCategory(name: string) {
-  try {
-    const response = await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating category:', error);
-    throw error;
-  }
-}
-
-export async function deleteCategory(id: string) {
-  try {
-    const response = await fetch(`/api/categories/${id}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting category:', error);
-    throw error;
-  }
-}
-
-// Tags API
-export async function getTags(): Promise<any[]> {
-  try {
-    const response = await fetch('/api/tags');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching tags:', error);
-    return [];
-  }
-}
-
-export async function createTag(name: string, color?: string) {
-  try {
-    const response = await fetch('/api/tags', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, color })
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating tag:', error);
-    throw error;
-  }
-}
-
-export async function deleteTag(id: string) {
-  try {
-    const response = await fetch(`/api/tags/${id}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting tag:', error);
-    throw error;
-  }
-}
