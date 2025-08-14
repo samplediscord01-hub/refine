@@ -1,0 +1,44 @@
+S C:\Users\sujit\Downloads\refine-main> npm run dev 
+
+> rest-express@1.0.0 dev
+> npx concurrently "npm:dev:server" "npm:dev:electron"
+
+[dev:server] 
+[dev:server] > rest-express@1.0.0 dev:server
+[dev:server] > NODE_ENV=development tsx watch server/index.ts
+[dev:server]
+[dev:electron]
+[dev:electron] > rest-express@1.0.0 dev:electron
+[dev:electron] > electron .
+[dev:electron]
+[dev:server] 'NODE_ENV' is not recognized as an internal or external command,
+[dev:server] operable program or batch file.
+[dev:server] npm run dev:server exited with code 1
+[dev:electron] 
+[dev:electron] Failed to start server process: Error: spawn npm ENOENT
+[dev:electron]     at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+[dev:electron]     at onErrorNT (node:internal/child_process:483:16)
+[dev:electron]     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[dev:electron]   errno: -4058,
+[dev:electron]   code: 'ENOENT',
+[dev:electron]   syscall: 'spawn npm',
+[dev:electron]   path: 'npm',
+[dev:electron]   spawnargs: [ 'run', 'dev:server' ]
+[dev:electron] }
+[dev:electron] Failed to start server: Error: spawn npm ENOENT
+[dev:electron]     at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+[dev:electron]     at onErrorNT (node:internal/child_process:483:16)
+[dev:electron]     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[dev:electron]   errno: -4058,
+[dev:electron]   code: 'ENOENT',
+[dev:electron]   syscall: 'spawn npm',
+[dev:electron]   path: 'npm',
+[dev:electron]   spawnargs: [ 'run', 'dev:server' ]
+[dev:electron] }
+[dev:electron] (node:18172) electron: Failed to load URL: file:///C:/Users/sujit/Downloads/refine-main/dist/public/index.html with error: ERR_FILE_NOT_FOUND
+[dev:electron] (Use `electron --trace-warnings ...` to show where the warning was created)
+[dev:electron] [18172:0814/184351.572:ERROR:CONSOLE:1] "Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[dev:electron] [18172:0814/184351.572:ERROR:CONSOLE:1] "Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[dev:electron] Stopping server...
+[dev:electron] npm run dev:electron exited with code 0
+PS C:\Users\sujit\Downloads\refine-main> 
