@@ -62,6 +62,9 @@ export class DrizzleStorage implements IStorage {
   constructor(dbName: string = 'cipherbox.db') {
     this.sqlite = new Database(dbName, { verbose: console.log });
     this.db = drizzle(this.sqlite, { schema, logger: true });
+    
+    // Initialize database tables on startup
+    this.initializeDatabase().catch(console.error);
   }
 
   async close(): Promise<void> {

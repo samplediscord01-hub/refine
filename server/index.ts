@@ -22,6 +22,10 @@ let storage: IStorage | null = null;
 
 export async function startServer(dbName?: string): Promise<{ app: express.Application; server: Server; port: number, storage: IStorage }> {
   storage = new DrizzleStorage(dbName);
+  
+  // Wait for database initialization to complete
+  await storage.initializeDatabase();
+  
   const app = express();
   app.use(enableCORS);
   app.use(express.json());
